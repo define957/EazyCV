@@ -61,3 +61,6 @@ str(folds)
 \code{\link{K_fold_cross_validation}},
   \code{\link{grid_search_cv}}
 }
+\author{
+Zhang Jiaqi
+}

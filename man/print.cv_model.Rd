@@ -18,3 +18,6 @@ Prints a header with run information, a table of the best parameters
 per metric (both max and min directions), and a summary matrix of the
 best scores (mean and sd).
 }
+\author{
+Zhang Jiaqi
+}

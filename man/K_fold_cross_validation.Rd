@@ -18,7 +18,9 @@ K_fold_cross_validation(
   model_settings = NULL,
   model_seed = NULL,
   corrupt_func_X = NULL,
-  corrupt_func_y = NULL
+  corrupt_func_X_seeds = NULL,
+  corrupt_func_y = NULL,
+  corrupt_func_y_seeds = NULL
 )
 }
 \arguments{
@@ -73,14 +75,27 @@ reproducibility without side effects on the global RNG state.}
 
 \item{corrupt_func_X}{Optional function applied to the training portion
 of each fold before the pipeline and model fitting; for noise-robustness
-experiments. Signature \code{function(X_train, fold_i)}: \code{fold_i}
-is the fold number (1-based; \code{0} during refit). Must return a
-matrix with the same dimensions as the input. Test folds are never
-contaminated. Default is \code{NULL}.}
+experiments. Signature \code{function(X_train, seed)}: \code{seed} is
+element \code{i} of \code{corrupt_func_X_seeds} on fold \code{i}
+(\code{NULL} if no seeds were supplied); the function is responsible for
+applying it, e.g. via \code{set.seed(seed)}. Must return a matrix with
+the same dimensions as the input. Test folds are never contaminated.
+Default is \code{NULL}.}
+
+\item{corrupt_func_X_seeds}{Optional integer vector of length
+\code{length(folds)} giving the seed passed to \code{corrupt_func_X} on
+each fold. Because the seed is an explicit per-fold value, the
+contamination pattern is reproducible regardless of the global RNG state
+and identical across parallel workers. Default is \code{NULL} (no seeds;
+the contamination function receives \code{NULL}).}
 
 \item{corrupt_func_y}{Optional function applied to the training response
 of each fold before the pipeline and model fitting; same contract as
 \code{corrupt_func_X}. Default is \code{NULL}.}
+
+\item{corrupt_func_y_seeds}{Optional integer vector of length
+\code{length(folds)}; see \code{corrupt_func_X_seeds}. Default is
+\code{NULL}.}
 }
 \value{
 A \code{matrix} of size \code{length(metrics) x length(folds)}.
@@ -100,7 +115,10 @@ test portions. This prevents data leakage from the test set into the
 training pipeline. Contamination functions (\code{corrupt_func_X},
 \code{corrupt_func_y}) run after the split and before the pipelines, so
 noise levels defined from training-fold statistics use raw (unscaled)
-values.
+values. Each receives its fold's seed from \code{corrupt_func_X_seeds} or
+\code{corrupt_func_y_seeds} and decides whether to apply it; passing
+different seed vectors across runs yields independent contamination
+replicates, while keeping them fixed makes runs directly comparable.
 }
 \examples{
 \dontrun{
@@ -127,9 +145,30 @@ cv_res <- K_fold_cross_validation(
 
 print(cv_res)
 rowMeans(cv_res)  # average RMSE across folds
+
+# contamination with a per-fold seed: flip 10\% of training labels
+cv_noisy <- K_fold_cross_validation(
+  model = my_lm,
+  X = mtcars[, c("wt", "disp")],
+  y = mtcars$mpg,
+  folds = make_k_folds(nrow(mtcars), 5),
+  metrics = list(rmse = rmse),
+  predict_func = my_predict,
+  model_seed = 42,
+  corrupt_func_y = function(y_train, seed) {
+    if (!is.null(seed)) set.seed(seed)
+    flip <- sample.int(nrow(y_train), size = floor(0.1 * nrow(y_train)))
+    y_train[flip] <- y_train[flip] + rnorm(length(flip), sd = 5)
+    y_train
+  },
+  corrupt_func_y_seeds = 1:5
+)
 }
 
 }
 \seealso{
 \code{\link{make_k_folds}}, \code{\link{grid_search_cv}}
+}
+\author{
+Zhang Jiaqi
 }

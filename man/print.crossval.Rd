@@ -17,3 +17,6 @@
 Prints a header with run information and a summary matrix with the
 mean and sd of each metric across folds.
 }
+\author{
+Zhang Jiaqi
+}

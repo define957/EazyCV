@@ -37,6 +37,7 @@
 #'
 #' @seealso \code{\link{K_fold_cross_validation}},
 #'   \code{\link{grid_search_cv}}
+#' @author Zhang Jiaqi
 #' @export
 make_k_folds <- function(
     num_data,

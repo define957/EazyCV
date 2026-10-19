@@ -31,6 +31,11 @@
 #' @param corrupt_func_X,corrupt_func_y Optional contamination functions
 #'   applied to the training portion of each fold during candidate
 #'   evaluation; see \code{K_fold_cross_validation()}.
+#' @param corrupt_func_X_seeds,corrupt_func_y_seeds Optional per-fold seed
+#'   vectors passed to the contamination functions; see
+#'   \code{K_fold_cross_validation()}. Fixed seeds make every candidate see
+#'   the same contamination pattern, so the search compares candidates under
+#'   identical noise.
 #' @param threads_num Number of worker threads used to evaluate candidates
 #'   in parallel via \code{foreach}/\code{doSNOW}. Defaults to
 #'   \code{parallel::detectCores() - 1}. A PSOCK cluster of that many
@@ -69,6 +74,7 @@
 #' @importFrom stats setNames
 #' @import foreach
 #' @import doSNOW
+#' @author Zhang Jiaqi
 #' @export
 grid_search_cv <- function(
     model,
@@ -263,6 +269,7 @@ select_best_idx <- function(scores, sds, direction = c("max", "min")) {
 #' @param digits Number of digits for the summary scores. Defaults to 4.
 #' @param ... Unused.
 #' @importFrom utils capture.output
+#' @author Zhang Jiaqi
 #' @export
 print.cv_model <- function(x, digits = 4, ...) {
   num_metrics  <- length(x$idx_max)

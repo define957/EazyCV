@@ -20,7 +20,9 @@ grid_search_cv(
   model_settings = NULL,
   model_seed = NULL,
   corrupt_func_X = NULL,
+  corrupt_func_X_seeds = NULL,
   corrupt_func_y = NULL,
+  corrupt_func_y_seeds = NULL,
   threads_num = parallel::detectCores() - 1
 )
 }
@@ -60,6 +62,12 @@ without touching the global RNG.}
 \item{corrupt_func_X, corrupt_func_y}{Optional contamination functions
 applied to the training portion of each fold during candidate
 evaluation; see \code{K_fold_cross_validation()}.}
+
+\item{corrupt_func_X_seeds, corrupt_func_y_seeds}{Optional per-fold seed
+vectors passed to the contamination functions; see
+\code{K_fold_cross_validation()}. Fixed seeds make every candidate see
+the same contamination pattern, so the search compares candidates under
+identical noise.}
 
 \item{threads_num}{Number of worker threads used to evaluate candidates
 in parallel via \code{foreach}/\code{doSNOW}. Defaults to
@@ -105,4 +113,7 @@ gs$best_params
 }
 \seealso{
 \code{\link{K_fold_cross_validation}}, \code{\link{make_k_folds}}
+}
+\author{
+Zhang Jiaqi
 }
