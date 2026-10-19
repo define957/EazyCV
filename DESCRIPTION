@@ -1,0 +1,28 @@
+Package: EazyCV
+Type: Package
+Title: Flexible K-Fold Cross-Validation for Arbitrary Models
+Version: 0.1.0
+Authors@R: c(
+    person(
+      given = "Jiaqi",
+      family = "Zhang",
+      email = "zhangjiaqi957957@outlook.com",
+      role = c("aut", "cre"),
+      comment = c(ORCID = "0009-0002-7162-637X")
+    )
+  )
+Description: Provides a lightweight and flexible framework for k-fold
+    cross-validation that works with arbitrary model fitting functions,
+    prediction routines, and evaluation metrics. Supports user-defined
+    preprocessing pipelines for both predictors and responses, and is
+    designed to be easily extensible for machine learning tasks.
+License: file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    cli,
+    doSNOW,
+    foreach,
+    parallel,
+    withr
+Config/roxygen2/version: 8.0.0
