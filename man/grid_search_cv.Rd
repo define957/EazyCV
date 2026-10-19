@@ -78,7 +78,7 @@ bar is shown while candidates are evaluated. Custom
 dataset are exported to the workers automatically.}
 }
 \value{
-An object of class \code{cv_model}, a list with components:
+An object of class \code{eazycv_model}, a list with components:
   \code{results} (per-candidate metric means, sds, and parameters),
   \code{idx_max}/\code{idx_min} (best candidate index per metric, both
   directions), \code{best_index} (per \code{select_direction}) and

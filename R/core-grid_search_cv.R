@@ -43,7 +43,7 @@
 #'   bar is shown while candidates are evaluated. Custom
 #'   \code{model}/\code{metrics}/\code{predict_func} closures and the
 #'   dataset are exported to the workers automatically.
-#' @return An object of class \code{cv_model}, a list with components:
+#' @return An object of class \code{eazycv_model}, a list with components:
 #'   \code{results} (per-candidate metric means, sds, and parameters),
 #'   \code{idx_max}/\code{idx_min} (best candidate index per metric, both
 #'   directions), \code{best_index} (per \code{select_direction}) and
@@ -195,7 +195,7 @@ grid_search_cv <- function(
       K           = length(folds),
       time        = Sys.time() - start_time
     ),
-    class = "cv_model"
+    class = "eazycv_model"
   )
 }
 
@@ -265,13 +265,13 @@ select_best_idx <- function(scores, sds, direction = c("max", "min")) {
 #' per metric (both max and min directions), and a summary matrix of the
 #' best scores (mean and sd).
 #'
-#' @param x A \code{cv_model} object.
+#' @param x A \code{eazycv_model} object.
 #' @param digits Number of digits for the summary scores. Defaults to 4.
 #' @param ... Unused.
 #' @importFrom utils capture.output
 #' @author Zhang Jiaqi
 #' @export
-print.cv_model <- function(x, digits = 4, ...) {
+print.eazycv_model <- function(x, digits = 4, ...) {
   num_metrics  <- length(x$idx_max)
   metric_names <- names(x$idx_max)
   mean_cols    <- paste0("mean.", metric_names)

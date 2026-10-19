@@ -263,7 +263,7 @@ K_fold_cross_validation <- function(
   rownames(metric_mat) <- names(metrics)
   metric_mat <- structure(
     metric_mat,
-    class        = c("crossval", "matrix"),
+    class        = c("eazycv_crossval", "matrix"),
     num_folds    = num_folds,
     metric_names = names(metrics)
   )
@@ -275,12 +275,12 @@ K_fold_cross_validation <- function(
 #' Prints a header with run information and a summary matrix with the
 #' mean and sd of each metric across folds.
 #'
-#' @param x A \code{crossval} object.
+#' @param x A \code{eazycv_crossval} object.
 #' @param digits Number of digits to display. Defaults to 4.
 #' @param ... Unused.
 #' @author Zhang Jiaqi
 #' @export
-print.crossval <- function(x, digits = 4, ...) {
+print.eazycv_crossval <- function(x, digits = 4, ...) {
   metric_names <- rownames(x)
 
   cli::cli_h1("K-Fold Cross Validation")
