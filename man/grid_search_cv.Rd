@@ -54,20 +54,24 @@ one search (e.g. error metrics, or accuracy-like scores).}
 
 \item{pipeline_X, pipeline_y, metrics_params, predict_params, model_settings}{See \code{K_fold_cross_validation()}.}
 
-\item{model_seed}{Optional integer seed. Passed to every candidate's inner
-\code{K_fold_cross_validation()} call, so that all candidates are
-evaluated under the same random state and the search is reproducible
-without touching the global RNG.}
+\item{model_seed}{Optional integer seed for model/pipeline randomness.
+Passed to every candidate's inner \code{K_fold_cross_validation()} call;
+each fold is reseeded from \code{model_seed + fold index}, so every
+configuration uses the same model/pipeline randomness at the same fold
+position, and the search is reproducible without touching the global RNG.}
 
 \item{corrupt_func_X, corrupt_func_y}{Optional contamination functions
 applied to the training portion of each fold during candidate
-evaluation; see \code{K_fold_cross_validation()}.}
+evaluation; see \code{K_fold_cross_validation()}. Supplying either one
+requires its seed vector.}
 
-\item{corrupt_func_X_seeds, corrupt_func_y_seeds}{Optional per-fold seed
-vectors passed to the contamination functions; see
-\code{K_fold_cross_validation()}. Fixed seeds make every candidate see
-the same contamination pattern, so the search compares candidates under
-identical noise.}
+\item{corrupt_func_X_seeds, corrupt_func_y_seeds}{Required when the
+corresponding contamination function is supplied. Integer vectors of
+length \code{length(folds)}, passed unchanged to every candidate. Because
+all configurations receive the same vector, fold \code{i} uses the same
+contamination draws everywhere. Each seed is applied locally via
+\code{withr::with_seed()}, so the noise is independent of
+\code{model_seed}.}
 
 \item{threads_num}{Number of worker threads used to evaluate candidates
 in parallel via \code{foreach}/\code{doSNOW}. Defaults to
@@ -79,18 +83,29 @@ dataset are exported to the workers automatically.}
 }
 \value{
 An object of class \code{eazycv_model}, a list with components:
-  \code{results} (per-candidate metric means, sds, and parameters),
-  \code{idx_max}/\code{idx_min} (best candidate index per metric, both
-  directions), \code{best_index} (per \code{select_direction}) and
-  \code{best_params} (the selected parameter list, one entry per metric,
-  named by metric), plus \code{num_params}, \code{num_failed}, \code{K},
-  and \code{time} (total search time). Errors if every candidate failed
-  for some metric.
+\itemize{
+  \item \code{results}: per-candidate metric means, sds, and parameters;
+  \item \code{idx_max}, \code{idx_min}: best candidate index per metric
+    for both optimization directions;
+  \item \code{best_index}: best index per metric following
+    \code{select_direction};
+  \item \code{best_params}: selected parameter list, one entry per metric,
+    named by metric;
+  \item \code{X}, \code{y}, \code{model}, \code{metrics},
+    \code{metrics_params}, \code{predict_func}, \code{predict_params},
+    \code{pipeline_X}, \code{pipeline_y}, \code{corrupt_func_X},
+    \code{corrupt_func_y}: inputs stored for
+    \code{\link{refit_model}()};
+  \item \code{num_params}, \code{num_failed}, \code{K},
+    \code{select_direction}, \code{time}: search metadata.
+}
+The function errors if every candidate failed for some metric.
 }
 \description{
 Evaluate a grid of model hyperparameters by cross-validation and select
-the best combination per metric. Refitting is left to the caller via the
-returned \code{best_params}.
+the best combination per metric. The selected models can then be fitted on
+the full data with \code{\link{refit_model}()} and scored on new data with
+\code{\link{evaluate_refit}()}.
 }
 \examples{
 \dontrun{
@@ -112,7 +127,8 @@ gs$best_params
 
 }
 \seealso{
-\code{\link{K_fold_cross_validation}}, \code{\link{make_k_folds}}
+\code{\link{K_fold_cross_validation}}, \code{\link{make_k_folds}},
+  \code{\link{refit_model}}, \code{\link{evaluate_refit}}
 }
 \author{
 Zhang Jiaqi

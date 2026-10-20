@@ -1,8 +1,9 @@
 #' Grid Search with K-Fold Cross-Validation
 #'
 #' Evaluate a grid of model hyperparameters by cross-validation and select
-#' the best combination per metric. Refitting is left to the caller via the
-#' returned \code{best_params}.
+#' the best combination per metric. The selected models can then be fitted on
+#' the full data with \code{\link{refit_model}()} and scored on new data with
+#' \code{\link{evaluate_refit}()}.
 #'
 #' @param model A model fitting function; see
 #'   \code{K_fold_cross_validation()}.
@@ -24,18 +25,22 @@
 #'   one search (e.g. error metrics, or accuracy-like scores).
 #' @param pipeline_X,pipeline_y,metrics_params,predict_params,model_settings
 #'   See \code{K_fold_cross_validation()}.
-#' @param model_seed Optional integer seed. Passed to every candidate's inner
-#'   \code{K_fold_cross_validation()} call, so that all candidates are
-#'   evaluated under the same random state and the search is reproducible
-#'   without touching the global RNG.
+#' @param model_seed Optional integer seed for model/pipeline randomness.
+#'   Passed to every candidate's inner \code{K_fold_cross_validation()} call;
+#'   each fold is reseeded from \code{model_seed + fold index}, so every
+#'   configuration uses the same model/pipeline randomness at the same fold
+#'   position, and the search is reproducible without touching the global RNG.
 #' @param corrupt_func_X,corrupt_func_y Optional contamination functions
 #'   applied to the training portion of each fold during candidate
-#'   evaluation; see \code{K_fold_cross_validation()}.
-#' @param corrupt_func_X_seeds,corrupt_func_y_seeds Optional per-fold seed
-#'   vectors passed to the contamination functions; see
-#'   \code{K_fold_cross_validation()}. Fixed seeds make every candidate see
-#'   the same contamination pattern, so the search compares candidates under
-#'   identical noise.
+#'   evaluation; see \code{K_fold_cross_validation()}. Supplying either one
+#'   requires its seed vector.
+#' @param corrupt_func_X_seeds,corrupt_func_y_seeds Required when the
+#'   corresponding contamination function is supplied. Integer vectors of
+#'   length \code{length(folds)}, passed unchanged to every candidate. Because
+#'   all configurations receive the same vector, fold \code{i} uses the same
+#'   contamination draws everywhere. Each seed is applied locally via
+#'   \code{withr::with_seed()}, so the noise is independent of
+#'   \code{model_seed}.
 #' @param threads_num Number of worker threads used to evaluate candidates
 #'   in parallel via \code{foreach}/\code{doSNOW}. Defaults to
 #'   \code{parallel::detectCores() - 1}. A PSOCK cluster of that many
@@ -44,14 +49,25 @@
 #'   \code{model}/\code{metrics}/\code{predict_func} closures and the
 #'   dataset are exported to the workers automatically.
 #' @return An object of class \code{eazycv_model}, a list with components:
-#'   \code{results} (per-candidate metric means, sds, and parameters),
-#'   \code{idx_max}/\code{idx_min} (best candidate index per metric, both
-#'   directions), \code{best_index} (per \code{select_direction}) and
-#'   \code{best_params} (the selected parameter list, one entry per metric,
-#'   named by metric), plus \code{num_params}, \code{num_failed}, \code{K},
-#'   and \code{time} (total search time). Errors if every candidate failed
-#'   for some metric.
-#' @seealso \code{\link{K_fold_cross_validation}}, \code{\link{make_k_folds}}
+#' \itemize{
+#'   \item \code{results}: per-candidate metric means, sds, and parameters;
+#'   \item \code{idx_max}, \code{idx_min}: best candidate index per metric
+#'     for both optimization directions;
+#'   \item \code{best_index}: best index per metric following
+#'     \code{select_direction};
+#'   \item \code{best_params}: selected parameter list, one entry per metric,
+#'     named by metric;
+#'   \item \code{X}, \code{y}, \code{model}, \code{metrics},
+#'     \code{metrics_params}, \code{predict_func}, \code{predict_params},
+#'     \code{pipeline_X}, \code{pipeline_y}, \code{corrupt_func_X},
+#'     \code{corrupt_func_y}: inputs stored for
+#'     \code{\link{refit_model}()};
+#'   \item \code{num_params}, \code{num_failed}, \code{K},
+#'     \code{select_direction}, \code{time}: search metadata.
+#' }
+#' The function errors if every candidate failed for some metric.
+#' @seealso \code{\link{K_fold_cross_validation}}, \code{\link{make_k_folds}},
+#'   \code{\link{refit_model}}, \code{\link{evaluate_refit}}
 #'
 #' @examples
 #' \dontrun{
@@ -83,22 +99,26 @@ grid_search_cv <- function(
     folds,
     metrics,
     param_list,
-    predict_func = predict,
+    predict_func     = predict,
     select_direction = c("min", "max"),
-    pipeline_X = NULL,
-    pipeline_y = NULL,
-    metrics_params = NULL,
-    predict_params = NULL,
-    model_settings = NULL,
-    model_seed = NULL,
-    corrupt_func_X = NULL,
+    pipeline_X       = NULL,
+    pipeline_y       = NULL,
+    metrics_params   = NULL,
+    predict_params   = NULL,
+    model_settings   = NULL,
+    model_seed       = NULL,
+    corrupt_func_X   = NULL,
     corrupt_func_X_seeds = NULL,
-    corrupt_func_y = NULL,
+    corrupt_func_y   = NULL,
     corrupt_func_y_seeds = NULL,
-    threads_num    = parallel::detectCores() - 1
+    threads_num      = parallel::detectCores() - 1
 ) {
 
   start_time <- Sys.time()
+  corrupt_seeds_check_cv(corrupt_func_X_seeds, length(folds),
+                         "corrupt_func_X_seeds", corrupt_func_X)
+  corrupt_seeds_check_cv(corrupt_func_y_seeds, length(folds),
+                         "corrupt_func_y_seeds", corrupt_func_y)
   withr::local_preserve_seed()
   if (!is.null(model_seed)) set.seed(model_seed)
 
@@ -185,33 +205,30 @@ grid_search_cv <- function(
 
   structure(
     list(
-      results     = results,
-      idx_max     = idx_max,
-      idx_min     = idx_min,
-      best_index  = best_index,
-      best_params = best_params,
-      num_params  = n_param,
-      num_failed  = sum(apply(is.na(search_res[, seq_len(num_metric), drop = FALSE]), 1, all)),
-      K           = length(folds),
-      time        = Sys.time() - start_time
+      X                = X,
+      y                = y,
+      model            = model,
+      results          = results,
+      idx_max          = idx_max,
+      idx_min          = idx_min,
+      best_index       = best_index,
+      best_params      = best_params,
+      metrics          = metrics,
+      metrics_params   = metrics_params,
+      num_params       = n_param,
+      pipeline_X       = pipeline_X,
+      pipeline_y       = pipeline_y,
+      corrupt_func_X   = corrupt_func_X,
+      corrupt_func_y   = corrupt_func_y,
+      predict_func     = predict_func,
+      predict_params   = predict_params,
+      num_failed       = sum(apply(is.na(search_res[, seq_len(num_metric), drop = FALSE]), 1, all)),
+      K                = length(folds),
+      select_direction = select_direction,
+      time             = Sys.time() - start_time
     ),
     class = "eazycv_model"
   )
-}
-
-select_best_idx <- function(scores, sds, direction = c("max", "min")) {
-  direction <- match.arg(direction)
-  if (all(is.na(scores))) { return(NA_integer_) }
-  extreme <- if (direction == "max") max(scores, na.rm = TRUE) else min(scores, na.rm = TRUE)
-  ties <- which(scores == extreme)
-  if (length(ties) > 1) {
-    if (!all(is.na(sds[ties]))) {
-      ties <- ties[which.min(sds[ties])]
-    } else {
-      ties <- ties[1]
-    }
-  }
-  return(ties)
 }
 
 # refit_best_model <- function(model, X, y, metric,

@@ -46,3 +46,24 @@ predict_model <- function(model_res, X_test, y_test,
   )
   return(list(y_test_hat = y_test_hat))
 }
+
+corrupt_seeds_check_cv <- function(seeds, num_folds, arg, func = NULL) {
+  func_arg <- sub("_seeds$", "", arg)
+  if (is.null(seeds)) {
+    if (!is.null(func)) {
+      stop(sprintf("'%s' must be supplied when '%s' is used.", arg, func_arg))
+    }
+    return(invisible(NULL))
+  }
+  if (!is.numeric(seeds) || length(seeds) != num_folds || anyNA(seeds) ||
+      any(seeds %% 1 != 0)) {
+    stop(sprintf(
+      "'%s' must be an integer vector of length %d with no missing values.",
+      arg, num_folds
+    ))
+  }
+  if (is.null(func)) {
+    stop(sprintf("'%s' requires '%s'.", arg, func_arg))
+  }
+  invisible(NULL)
+}
