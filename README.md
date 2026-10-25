@@ -1,13 +1,25 @@
 # EazyCV
 
-A lightweight R package for k-fold cross-validation of arbitrary model fitting
-and prediction functions, with preprocessing pipelines, per-metric
-hyperparameter selection, and noise-robustness experiments.
+**Flexible K-fold cross-validation for arbitrary models, in plain R.**
+
+EazyCV is a lightweight framework that turns *any* model-fitting function,
+prediction routine, and evaluation metric into a reproducible cross-validation
+experiment. It ships with preprocessing pipelines, per-metric hyperparameter
+search, nested cross-validation, and noise-robustness (contamination) studies —
+without asking you to adopt a modeling API.
+
+- **Model agnostic** — pass a closure, not a class.
+- **Metric agnostic** — pass `function(y, y_hat)`; results are kept per metric.
+- **Reproducible** — every random stream is seeded, and the global RNG is left
+  untouched.
+- **Leak-free** — pipelines are fitted on the training portion of each fold only.
+
+---
 
 ## Installation
 
 ```r
-devtools::install()
+pak::pak("define957/EazyCV")
 ```
 
 ## Quick start
@@ -17,21 +29,21 @@ library(EazyCV)
 
 rmse <- function(y, y_hat) sqrt(mean((y - y_hat)^2))
 
-my_lm <- function(X, y, shift = 0) lm.fit(cbind(1, X), y + shift)
+my_lm    <- function(X, y, shift = 0) lm.fit(cbind(1, X), y + shift)
 my_predict <- function(fit, X) cbind(1, X) %*% fit$coefficients
 
-X <- mtcars[, c("wt", "disp")]
-y <- mtcars$mpg
+X     <- mtcars[, c("wt", "disp")]
+y     <- mtcars$mpg
 folds <- make_k_folds(nrow(mtcars), K = 5, shuffle = TRUE, seed = 1)
 
-# Cross-validation
+# 1. Cross-validation
 cv <- K_fold_cross_validation(
   model = my_lm, X = X, y = y, folds = folds,
   metrics = list(rmse = rmse), predict_func = my_predict,
   model_seed = 42
 )
 
-# Grid search
+# 2. Grid search over hyperparameters
 gs <- grid_search_cv(
   model = my_lm, X = X, y = y, folds = folds,
   metrics = list(rmse = rmse), param_list = list(shift = c(0, 0.5, 1)),
@@ -39,25 +51,76 @@ gs <- grid_search_cv(
   model_seed = 42, threads_num = 2
 )
 
-# Refit on the full data and evaluate
+# 3. Refit on the full data and evaluate
 refit <- refit_model(gs, refit_seed = 7)
 evaluate_refit(gs, X, y, refit = refit)
 ```
 
-## Workflow
+## Table of contents
 
-- `make_k_folds()` returns a list of held-out row indices, one per fold.
-- `K_fold_cross_validation()` fits the model on each training portion,
-  predicts the held-out fold, and returns a metrics-by-folds matrix.
-- `grid_search_cv()` expands `param_list` with `expand.grid()`, runs CV for
-  every candidate in parallel, and selects the best candidate per metric.
-- `refit_model()` fits one final model per metric on the full data using that
-  metric's best parameters.
-- `evaluate_refit()` applies the stored transformers to new data, predicts,
-  and computes the metrics.
-- `nested_cv()` nests a whole grid search inside an outer fold loop, so the
-  hyperparameters are selected without ever touching the fold used for
-  scoring.
+- [Core workflow](#core-workflow)
+- [Metrics](#metrics)
+- [Nested cross-validation](#nested-cross-validation)
+- [Preprocessing pipelines](#preprocessing-pipelines)
+- [Contamination experiments](#contamination-experiments)
+- [Random seeds](#random-seeds)
+- [Notes](#notes)
+- [License](#license)
+
+## Core workflow
+
+| Function | Purpose |
+| --- | --- |
+| `make_k_folds()` | Build a list of held-out row indices, one per fold. |
+| `K_fold_cross_validation()` | Fit the model on each training portion, predict the held-out fold, and return a metrics-by-folds matrix. |
+| `grid_search_cv()` | Expand `param_list` with `expand.grid()`, run CV for every candidate in parallel, and select the best candidate per metric. |
+| `refit_model()` | Fit one final model per metric on the full data using that metric's best parameters. |
+| `evaluate_refit()` | Apply the stored transformers to new data, predict, and compute the metrics. |
+| `nested_cv()` | Nest a whole grid search inside an outer fold loop, so hyperparameters are selected without ever touching the fold used for scoring. |
+
+## Metrics
+
+A metric is any function of the form `function(y, y_hat)`. Pass a named list of
+them through `metrics`; every metric gets its own column in the results, and
+`grid_search_cv()` selects the best candidate **per metric**, so different
+columns may come from different configurations.
+
+### Built-in metrics
+
+All built-in metrics are **classification metrics**: they take the predicted
+class labels and the true class labels, and they expect a factor or character
+vector of labels.
+
+| Function | Metric type | Description |
+| --- | --- | --- |
+| `accuracy()` | Classification | Fraction of predictions that exactly match the ground truth. |
+| `balanced_accuracy()` | Classification | Unweighted mean of the per-class recall. With `adjusted = TRUE`, rescaled so that random performance scores 0 and perfect performance scores 1. |
+| `geometric_mean_of_recall()` | Classification | Geometric mean of the per-class recall (G-mean). Multiplies the class-wise sensitivities, so a single failing class pulls the whole score down. Supports `sample_weight` and a `correction` value for classes the classifier never recognizes. |
+
+```r
+cv <- K_fold_cross_validation(
+  model = my_classifier, X = X, y = y, folds = folds,
+  metrics = list(
+    acc    = accuracy,
+    bacc   = balanced_accuracy,
+    gmean  = geometric_mean_of_recall
+  ),
+  predict_func = my_predict
+)
+```
+
+### Custom metrics
+
+Any user-defined function works, including **regression metrics**:
+
+```r
+rmse <- function(y, y_hat) sqrt(mean((y - y_hat)^2))
+mae  <- function(y, y_hat) mean(abs(y - y_hat))
+
+metrics = list(rmse = rmse, mae = mae)
+```
+
+Extra arguments can be supplied per metric through `metrics_params`.
 
 ## Nested cross-validation
 
@@ -175,7 +238,8 @@ Notes:
   precomputed `refit` to evaluate several datasets against the same fitted
   model, or pass `refit_seed` for reproducibility.
 - See `?K_fold_cross_validation`, `?grid_search_cv`, `?nested_cv`,
-  `?refit_model`, and `?evaluate_refit` for details.
+  `?refit_model`, `?evaluate_refit`, `?accuracy`, `?balanced_accuracy`, and
+  `?geometric_mean_of_recall` for details.
 
 ## License
 
