@@ -43,10 +43,11 @@
 #'   \code{model_seed}.
 #' @param threads_num Number of worker threads used to evaluate candidates
 #'   in parallel via \code{foreach}/\code{doSNOW}. Defaults to
-#'   \code{parallel::detectCores() - 1}. A PSOCK cluster of that many
-#'   workers is spawned for the search and shut down afterwards; a progress
-#'   bar is shown while candidates are evaluated. Custom
-#'   \code{model}/\code{metrics}/\code{predict_func} closures and the
+#'   \code{max(1, parallel::detectCores() - 1)}. Values below 1 fall back to
+#'   1, and the value is capped at the number of candidates in the grid. A
+#'   PSOCK cluster of that many workers is spawned for the search and shut
+#'   down afterwards; a progress bar is shown while candidates are evaluated.
+#'   Custom \code{model}/\code{metrics}/\code{predict_func} closures and the
 #'   dataset are exported to the workers automatically.
 #' @return An object of class \code{eazycv_model}, a list with components:
 #' \itemize{
@@ -111,10 +112,12 @@ grid_search_cv <- function(
     corrupt_func_X_seeds = NULL,
     corrupt_func_y   = NULL,
     corrupt_func_y_seeds = NULL,
-    threads_num      = parallel::detectCores() - 1
+    threads_num      = max(parallel::detectCores() - 1L, 1L, na.rm = TRUE)
 ) {
 
   start_time <- Sys.time()
+  threads_num <- max(1L, suppressWarnings(as.integer(threads_num))[1], na.rm = TRUE)
+
   corrupt_seeds_check_cv(corrupt_func_X_seeds, length(folds),
                          "corrupt_func_X_seeds", corrupt_func_X)
   corrupt_seeds_check_cv(corrupt_func_y_seeds, length(folds),
@@ -125,6 +128,8 @@ grid_search_cv <- function(
   param_grid  <- expand.grid(param_list, stringsAsFactors = FALSE)
   n_param     <- nrow(param_grid)
   param_names <- colnames(param_grid)
+  # never spawn more workers than there are candidates to evaluate
+  threads_num <- min(threads_num, n_param)
 
   select_direction <- match.arg(select_direction)
   metrics          <- metrics_check_cv(metrics)
@@ -171,6 +176,9 @@ grid_search_cv <- function(
       corrupt_func_y_seeds = corrupt_func_y_seeds
     )
     c(rowMeans(res_i), apply(res_i, 1, sd))
+  }
+  if (is.null(dim(search_res))) {
+    search_res <- matrix(search_res, nrow = n_param)
   }
 
   colnames(search_res) <- c(

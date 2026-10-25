@@ -23,7 +23,7 @@ grid_search_cv(
   corrupt_func_X_seeds = NULL,
   corrupt_func_y = NULL,
   corrupt_func_y_seeds = NULL,
-  threads_num = parallel::detectCores() - 1
+  threads_num = max(parallel::detectCores() - 1L, 1L, na.rm = TRUE)
 )
 }
 \arguments{
@@ -75,10 +75,11 @@ contamination draws everywhere. Each seed is applied locally via
 
 \item{threads_num}{Number of worker threads used to evaluate candidates
 in parallel via \code{foreach}/\code{doSNOW}. Defaults to
-\code{parallel::detectCores() - 1}. A PSOCK cluster of that many
-workers is spawned for the search and shut down afterwards; a progress
-bar is shown while candidates are evaluated. Custom
-\code{model}/\code{metrics}/\code{predict_func} closures and the
+\code{max(1, parallel::detectCores() - 1)}. Values below 1 fall back to
+1, and the value is capped at the number of candidates in the grid. A
+PSOCK cluster of that many workers is spawned for the search and shut
+down afterwards; a progress bar is shown while candidates are evaluated.
+Custom \code{model}/\code{metrics}/\code{predict_func} closures and the
 dataset are exported to the workers automatically.}
 }
 \value{

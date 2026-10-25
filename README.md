@@ -55,6 +55,48 @@ evaluate_refit(gs, X, y, refit = refit)
   metric's best parameters.
 - `evaluate_refit()` applies the stored transformers to new data, predicts,
   and computes the metrics.
+- `nested_cv()` nests a whole grid search inside an outer fold loop, so the
+  hyperparameters are selected without ever touching the fold used for
+  scoring.
+
+## Nested cross-validation
+
+`grid_search_cv()` reports the CV score of the best candidate, which is
+optimistically biased: the same folds both selected and scored it.
+`nested_cv()` adds an outer loop. Hyperparameters are selected on the outer
+training set only, the chosen model is refitted there, and it is scored once
+on the untouched outer test fold. The result estimates the whole tuning
+procedure, not one pre-selected configuration.
+
+```r
+outer <- make_k_folds(nrow(mtcars), K = 3, shuffle = TRUE, seed = 1)
+
+scores <- nested_cv(
+  model = my_lm, X = X, y = y, outer_folds = outer,
+  metrics = list(rmse = rmse), param_list = list(shift = c(0, 0.5, 1)),
+  predict_func = my_predict, select_direction = "min",
+  inner_folds_num   = 3,
+  inner_folds_seeds = c(11, 12, 13),
+  model_seeds       = c(101, 102, 103),
+  refit_seeds       = c(201, 202, 203),
+  threads_num       = 2
+)
+
+scores            # one row per outer fold, one column per metric
+colMeans(scores)  # nested-CV estimate of the tuning procedure
+```
+
+- Each outer fold runs its own grid search, so the cost is
+  `outer folds x grid size x inner folds` model fits, plus one refit per
+  outer fold and metric.
+- The seed arguments are vectors with one element per outer fold. The
+  contamination seeds are a list whose element `i` holds `inner_folds_num`
+  seeds. Supplying all of them makes the run reproducible and leaves the
+  global RNG untouched.
+- Selection is per metric, so different columns of the result may come from
+  different configurations and different fitted models.
+- `outer_folds` must partition the data; generate it with `make_k_folds()`
+  (`stratified = TRUE` for classification).
 
 ## Preprocessing pipelines
 
@@ -105,6 +147,9 @@ across grid-search candidates.
 | `corrupt_func_X_seeds`, `corrupt_func_y_seeds` | per-fold contamination; required with the matching function; length = number of folds |
 | `refit_seed` | final refit pipeline/model stream |
 | `corrupt_func_X_seed`, `corrupt_func_y_seed` | refit contamination, applied locally |
+| `model_seeds` (`nested_cv()`) | one model seed per outer fold; inner fold `k` is seeded with `model_seeds[i] + k` |
+| `inner_folds_seeds`, `refit_seeds` (`nested_cv()`) | inner split seed and refit seed, one per outer fold |
+| `corrupt_func_X_seeds_list`, `corrupt_func_y_seeds_list` (`nested_cv()`) | one vector of `inner_folds_num` contamination seeds per outer fold |
 
 Notes:
 
@@ -129,8 +174,8 @@ Notes:
 - `evaluate_refit(..., refit = NULL)` refits the model on every call. Pass a
   precomputed `refit` to evaluate several datasets against the same fitted
   model, or pass `refit_seed` for reproducibility.
-- See `?K_fold_cross_validation`, `?grid_search_cv`, `?refit_model`, and
-  `?evaluate_refit` for details.
+- See `?K_fold_cross_validation`, `?grid_search_cv`, `?nested_cv`,
+  `?refit_model`, and `?evaluate_refit` for details.
 
 ## License
 
