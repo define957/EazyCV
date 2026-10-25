@@ -51,7 +51,9 @@ accuracy <- function(y, y_hat, na.rm = FALSE) {
   if (length(y) == 0L) {
     stop("'y' and 'y_hat' must not be empty.")
   }
-
+  if (anyNA(y) || anyNA(y_hat)) {
+    stop("'y' and 'y_hat' must not contain missing values.")
+  }
   return(mean(y == y_hat, na.rm = na.rm))
 
 }
