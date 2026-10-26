@@ -9,9 +9,6 @@
 #'   flattened in column-major order.
 #' @param y_hat Predicted labels, in the same order and of the same length as
 #'   \code{y}.
-#' @param na.rm Logical; if \code{TRUE}, pairs containing a missing value in
-#'   either \code{y} or \code{y_hat} are discarded before averaging. Default
-#'   is \code{FALSE}.
 #'
 #' @return A single numeric value between 0 and 1: the fraction of matching
 #'   predictions.
@@ -37,7 +34,7 @@
 #' @author Zhang Jiaqi
 #' @seealso \code{\link{K_fold_cross_validation}}
 #' @export
-accuracy <- function(y, y_hat, na.rm = FALSE) {
+accuracy <- function(y, y_hat) {
 
   y     <- if (is.factor(y)) as.character(y) else as.vector(y)
   y_hat <- if (is.factor(y_hat)) as.character(y_hat) else as.vector(y_hat)
@@ -54,6 +51,5 @@ accuracy <- function(y, y_hat, na.rm = FALSE) {
   if (anyNA(y) || anyNA(y_hat)) {
     stop("'y' and 'y_hat' must not contain missing values.")
   }
-  return(mean(y == y_hat, na.rm = na.rm))
-
+  return(mean(y == y_hat))
 }

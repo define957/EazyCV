@@ -4,7 +4,7 @@
 \alias{accuracy}
 \title{Classification Accuracy}
 \usage{
-accuracy(y, y_hat, na.rm = FALSE)
+accuracy(y, y_hat)
 }
 \arguments{
 \item{y}{Ground truth labels. A vector, matrix, or factor; matrices are
@@ -12,10 +12,6 @@ flattened in column-major order.}
 
 \item{y_hat}{Predicted labels, in the same order and of the same length as
 \code{y}.}
-
-\item{na.rm}{Logical; if \code{TRUE}, pairs containing a missing value in
-either \code{y} or \code{y_hat} are discarded before averaging. Default
-is \code{FALSE}.}
 }
 \value{
 A single numeric value between 0 and 1: the fraction of matching
