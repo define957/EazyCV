@@ -87,15 +87,17 @@ columns may come from different configurations.
 
 ### Built-in metrics
 
-All built-in metrics are **classification metrics**: they take the predicted
-class labels and the true class labels, and they expect a factor or character
-vector of labels.
+Built-in metrics cover both classification and regression. Classification
+metrics take the predicted class labels and the true class labels, and they
+expect a factor or character vector of labels; regression metrics take numeric
+observed and predicted values.
 
 | Function | Metric type | Description |
 | --- | --- | --- |
 | `accuracy()` | Classification | Fraction of predictions that exactly match the ground truth. |
 | `balanced_accuracy()` | Classification | Unweighted mean of the per-class recall. With `adjusted = TRUE`, rescaled so that random performance scores 0 and perfect performance scores 1. |
 | `geometric_mean_of_recall()` | Classification | Geometric mean of the per-class recall (G-mean). Multiplies the class-wise sensitivities, so a single failing class pulls the whole score down. Supports `sample_weight` and a `correction` value for classes the classifier never recognizes. |
+| `mean_squared_error()` | Regression | Mean of the squared residuals, `mean((y - y_hat)^2)`. Squared units of `y`; take the square root for RMSE. |
 
 ```r
 cv <- K_fold_cross_validation(
@@ -238,8 +240,8 @@ Notes:
   precomputed `refit` to evaluate several datasets against the same fitted
   model, or pass `refit_seed` for reproducibility.
 - See `?K_fold_cross_validation`, `?grid_search_cv`, `?nested_cv`,
-  `?refit_model`, `?evaluate_refit`, `?accuracy`, `?balanced_accuracy`, and
-  `?geometric_mean_of_recall` for details.
+  `?refit_model`, `?evaluate_refit`, `?accuracy`, `?balanced_accuracy`,
+  `?geometric_mean_of_recall`, and `?mean_squared_error` for details.
 
 ## License
 
