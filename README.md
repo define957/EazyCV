@@ -92,20 +92,43 @@ metrics take the predicted class labels and the true class labels, and they
 expect a factor or character vector of labels; regression metrics take numeric
 observed and predicted values.
 
-| Function | Metric type | Description |
-| --- | --- | --- |
-| `accuracy()` | Classification | Fraction of predictions that exactly match the ground truth. |
-| `balanced_accuracy()` | Classification | Unweighted mean of the per-class recall. With `adjusted = TRUE`, rescaled so that random performance scores 0 and perfect performance scores 1. |
-| `geometric_mean_of_recall()` | Classification | Geometric mean of the per-class recall (G-mean). Multiplies the class-wise sensitivities, so a single failing class pulls the whole score down. Supports `sample_weight` and a `correction` value for classes the classifier never recognizes. |
-| `mean_squared_error()` | Regression | Mean of the squared residuals, `mean((y - y_hat)^2)`. Squared units of `y`; take the square root for RMSE. |
+#### Classification
+
+| Function | Description |
+| --- | --- |
+| `accuracy()` | Fraction of predictions that exactly match the ground truth. |
+| `balanced_accuracy()` | Unweighted mean of the per-class recall. With `adjusted = TRUE`, rescaled so that random performance scores 0 and perfect performance scores 1. |
+| `geometric_mean_of_recall()` | Geometric mean of the per-class recall (G-mean). Multiplies the class-wise sensitivities, so a single failing class pulls the whole score down. Supports `sample_weight` and a `correction` value for classes with no true samples. |
 
 ```r
 cv <- K_fold_cross_validation(
   model = my_classifier, X = X, y = y, folds = folds,
   metrics = list(
-    acc    = accuracy,
-    bacc   = balanced_accuracy,
-    gmean  = geometric_mean_of_recall
+    acc   = accuracy,
+    bacc  = balanced_accuracy,
+    gmean = geometric_mean_of_recall
+  ),
+  predict_func = my_predict
+)
+```
+
+#### Regression
+
+| Function | Description |
+| --- | --- |
+| `mean_absolute_error()` | Mean of the absolute residuals, `mean(abs(y - y_hat))`. Expressed in the original units of `y`; lower is better. |
+| `mean_squared_error()` | Mean of the squared residuals, `mean((y - y_hat)^2)`. Expressed in the squared units of `y` and sensitive to outliers; lower is better. |
+| `root_mean_squared_error()` | Square root of MSE, `sqrt(mean_squared_error(y, y_hat))`. Expressed in the original units of `y`; lower is better. |
+| `symmetric_mean_absolute_percentage_error()` | Symmetric mean absolute percentage error (SMAPE), the mean of `2 * abs(y - y_hat) / (abs(y) + abs(y_hat))` in `[0, 2]`. Lower is better; multiply by 100 for a percentage. |
+
+```r
+cv <- K_fold_cross_validation(
+  model = my_lm, X = X, y = y, folds = folds,
+  metrics = list(
+    mae   = mean_absolute_error,
+    mse   = mean_squared_error,
+    rmse  = root_mean_squared_error,
+    smape = symmetric_mean_absolute_percentage_error
   ),
   predict_func = my_predict
 )
@@ -113,13 +136,14 @@ cv <- K_fold_cross_validation(
 
 ### Custom metrics
 
-Any user-defined function works, including **regression metrics**:
+Any user-defined function works:
 
 ```r
-rmse <- function(y, y_hat) sqrt(mean((y - y_hat)^2))
-mae  <- function(y, y_hat) mean(abs(y - y_hat))
+r2 <- function(y, y_hat) {
+  1 - sum((y - y_hat)^2) / sum((y - mean(y))^2)
+}
 
-metrics = list(rmse = rmse, mae = mae)
+metrics = list(r2 = r2)
 ```
 
 Extra arguments can be supplied per metric through `metrics_params`.
@@ -241,7 +265,9 @@ Notes:
   model, or pass `refit_seed` for reproducibility.
 - See `?K_fold_cross_validation`, `?grid_search_cv`, `?nested_cv`,
   `?refit_model`, `?evaluate_refit`, `?accuracy`, `?balanced_accuracy`,
-  `?geometric_mean_of_recall`, and `?mean_squared_error` for details.
+  `?geometric_mean_of_recall`, `?mean_absolute_error`,
+  `?mean_squared_error`, `?root_mean_squared_error`,
+  `?symmetric_mean_absolute_percentage_error` for details.
 
 ## License
 
