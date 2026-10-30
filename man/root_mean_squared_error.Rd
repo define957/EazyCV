@@ -10,7 +10,7 @@ root_mean_squared_error(y, y_hat)
 \item{y}{Observed values. A numeric vector or matrix.}
 
 \item{y_hat}{Predicted values, in the same order and of the same length as
-  \code{y}.}
+\code{y}.}
 }
 \value{
 A single numeric value: the square root of the average of the
