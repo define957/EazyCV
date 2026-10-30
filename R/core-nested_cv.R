@@ -310,12 +310,20 @@ nested_cv <- function(
     n_ok <- gs$num_params - gs$num_failed
 
     if (verbose) {
-      cat(sprintf(
-        "Fold %2d/%d  grid %d/%d ok (%d failed)  |  inner: %s  |  outer: %s\n",
-        i, length(outer_folds),
-        n_ok, gs$num_params, gs$num_failed,
-        paste(sprintf("%s %.3f", names(metrics), inner_mean), collapse = "  "),
-        paste(sprintf("%s %.3f", ev$metric, ev$value), collapse = "  ")
+      m_width <- max(nchar(names(metrics)))
+      metric_lines <- vapply(names(metrics), function(m) {
+        sprintf("    %-*s  inner: %7.3f   outer: %7.3f",
+                m_width, m,
+                ifelse(is.na(inner_mean[m]), NA_real_, inner_mean[m]),
+                ifelse(is.na(ev$value[match(m, ev$metric)]), NA_real_,
+                       ev$value[match(m, ev$metric)]))
+      }, character(1))
+
+      cli::cli_h2(sprintf("Outer Fold %d/%d", i, length(outer_folds)))
+      cli::cli_verbatim(c(
+        sprintf("    Grid search: %d/%d candidates ok (%d failed)",
+                n_ok, gs$num_params, gs$num_failed),
+        metric_lines
       ))
     }
   }
