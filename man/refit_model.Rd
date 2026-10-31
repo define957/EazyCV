@@ -42,11 +42,12 @@ by \code{\link{grid_search_cv}()}. One model is fitted per metric, using
 that metric's best parameter combination.
 }
 \details{
-The order of operations matches cross-validation: contamination, then
-\code{pipeline_X}/\code{pipeline_y}, then model fitting. Contamination and
-pipelines are fitted on the full data rather than on a training fold, so
-the returned transformers should be applied to new data before prediction
-(as \code{\link{evaluate_refit}()} does).
+The order of operations matches cross-validation:
+\code{pipeline_X}/\code{pipeline_y}, then contamination, then model
+fitting. Pipelines are fitted on the clean full data and contamination is
+applied afterwards, so noise is defined in the transformed units, exactly
+as during cross-validation. The returned transformers should be applied to
+new data before prediction (as \code{\link{evaluate_refit}()} does).
 
 With \code{refit_seed = NULL} the global RNG is used and consumed. Passing
 \code{refit_seed} makes the refit reproducible and leaves the global RNG

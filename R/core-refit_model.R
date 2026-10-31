@@ -26,11 +26,12 @@
 #' }
 #'
 #' @details
-#' The order of operations matches cross-validation: contamination, then
-#' \code{pipeline_X}/\code{pipeline_y}, then model fitting. Contamination and
-#' pipelines are fitted on the full data rather than on a training fold, so
-#' the returned transformers should be applied to new data before prediction
-#' (as \code{\link{evaluate_refit}()} does).
+#' The order of operations matches cross-validation:
+#' \code{pipeline_X}/\code{pipeline_y}, then contamination, then model
+#' fitting. Pipelines are fitted on the clean full data and contamination is
+#' applied afterwards, so noise is defined in the transformed units, exactly
+#' as during cross-validation. The returned transformers should be applied to
+#' new data before prediction (as \code{\link{evaluate_refit}()} does).
 #'
 #' With \code{refit_seed = NULL} the global RNG is used and consumed. Passing
 #' \code{refit_seed} makes the refit reproducible and leaves the global RNG
@@ -81,21 +82,6 @@ refit_model <- function(
   X <- as.matrix(eazycv_model$X)
   y <- as.matrix(eazycv_model$y)
 
-  if (!is.null(eazycv_model$corrupt_func_X)) {
-    X <- if (is.null(corrupt_func_X_seed)) {
-      eazycv_model$corrupt_func_X(X)
-    } else {
-      withr::with_seed(corrupt_func_X_seed, eazycv_model$corrupt_func_X(X))
-    }
-  }
-  if (!is.null(eazycv_model$corrupt_func_y)) {
-    y <- if (is.null(corrupt_func_y_seed)) {
-      eazycv_model$corrupt_func_y(y)
-    } else {
-      withr::with_seed(corrupt_func_y_seed, eazycv_model$corrupt_func_y(y))
-    }
-  }
-
   X_scalers <- list()
   y_scalers <- list()
   if (!is.null(eazycv_model$pipeline_X)) {
@@ -111,6 +97,21 @@ refit_model <- function(
       pip_temp <- eazycv_model$pipeline_y[[pipi]](y)
       y_scalers[[pipi]] <- pip_temp
       y  <- trans(pip_temp, y)
+    }
+  }
+
+  if (!is.null(eazycv_model$corrupt_func_X)) {
+    X <- if (is.null(corrupt_func_X_seed)) {
+      eazycv_model$corrupt_func_X(X)
+    } else {
+      withr::with_seed(corrupt_func_X_seed, eazycv_model$corrupt_func_X(X))
+    }
+  }
+  if (!is.null(eazycv_model$corrupt_func_y)) {
+    y <- if (is.null(corrupt_func_y_seed)) {
+      eazycv_model$corrupt_func_y(y)
+    } else {
+      withr::with_seed(corrupt_func_y_seed, eazycv_model$corrupt_func_y(y))
     }
   }
 
