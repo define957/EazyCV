@@ -76,10 +76,10 @@ model fit. Contamination noise is controlled separately by
 \code{NULL}, the global RNG is used and consumed.}
 
 \item{corrupt_func_X}{Optional function applied to the training portion
-of each fold before the pipeline and model fitting; for noise-robustness
-experiments. Signature \code{function(X_train)}. Must return a matrix
-with the same dimensions as the input. Test folds are never contaminated.
-Default is \code{NULL}.}
+of each fold after the pipeline and before model fitting; for
+noise-robustness experiments. Signature \code{function(X_train)}. Must
+return a matrix with the same dimensions as the input. Test folds are
+never contaminated. Default is \code{NULL}.}
 
 \item{corrupt_func_X_seeds}{Required when \code{corrupt_func_X} is
 supplied. Integer vector of length \code{length(folds)}. Fold \code{i}'s
@@ -90,8 +90,8 @@ not consume the fold's model RNG stream. Use the same vector across grid
 candidates to compare them under identical noise.}
 
 \item{corrupt_func_y}{Optional function applied to the training response
-of each fold before the pipeline and model fitting; same contract as
-\code{corrupt_func_X}. Default is \code{NULL}.}
+of each fold after the pipeline and before model fitting; same contract
+as \code{corrupt_func_X}. Default is \code{NULL}.}
 
 \item{corrupt_func_y_seeds}{Required when \code{corrupt_func_y} is
 supplied; integer vector of length \code{length(folds)}. See
@@ -113,9 +113,9 @@ Preprocessing pipelines (\code{pipeline_X} and \code{pipeline_y}) are fit
 on the training portion of each fold and then applied to both training and
 test portions. This prevents data leakage from the test set into the
 training pipeline. Contamination functions (\code{corrupt_func_X},
-\code{corrupt_func_y}) run after the split and before the pipelines, so
-noise levels defined from training-fold statistics use raw (unscaled)
-values. Contamination functions are always seeded explicitly: fold
+\code{corrupt_func_y}) run after the pipelines, so pipelines are fitted on
+the clean training portion and noise is defined in the transformed units.
+Contamination functions are always seeded explicitly: fold
 \code{i} uses \code{corrupt_func_X_seeds[i]} and
 \code{corrupt_func_y_seeds[i]} locally via
 \code{withr::with_seed()}, so the noise does not depend on

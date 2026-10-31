@@ -45,10 +45,10 @@
 #'   \code{corrupt_func_X_seeds} / \code{corrupt_func_y_seeds}. When
 #'   \code{NULL}, the global RNG is used and consumed.
 #' @param corrupt_func_X Optional function applied to the training portion
-#'   of each fold before the pipeline and model fitting; for noise-robustness
-#'   experiments. Signature \code{function(X_train)}. Must return a matrix
-#'   with the same dimensions as the input. Test folds are never contaminated.
-#'   Default is \code{NULL}.
+#'   of each fold after the pipeline and before model fitting; for
+#'   noise-robustness experiments. Signature \code{function(X_train)}. Must
+#'   return a matrix with the same dimensions as the input. Test folds are
+#'   never contaminated. Default is \code{NULL}.
 #' @param corrupt_func_X_seeds Required when \code{corrupt_func_X} is
 #'   supplied. Integer vector of length \code{length(folds)}. Fold \code{i}'s
 #'   contamination runs under
@@ -57,8 +57,8 @@
 #'   not consume the fold's model RNG stream. Use the same vector across grid
 #'   candidates to compare them under identical noise.
 #' @param corrupt_func_y Optional function applied to the training response
-#'   of each fold before the pipeline and model fitting; same contract as
-#'   \code{corrupt_func_X}. Default is \code{NULL}.
+#'   of each fold after the pipeline and before model fitting; same contract
+#'   as \code{corrupt_func_X}. Default is \code{NULL}.
 #' @param corrupt_func_y_seeds Required when \code{corrupt_func_y} is
 #'   supplied; integer vector of length \code{length(folds)}. See
 #'   \code{corrupt_func_X_seeds}.
@@ -72,9 +72,9 @@
 #' on the training portion of each fold and then applied to both training and
 #' test portions. This prevents data leakage from the test set into the
 #' training pipeline. Contamination functions (\code{corrupt_func_X},
-#' \code{corrupt_func_y}) run after the split and before the pipelines, so
-#' noise levels defined from training-fold statistics use raw (unscaled)
-#' values. Contamination functions are always seeded explicitly: fold
+#' \code{corrupt_func_y}) run after the pipelines, so pipelines are fitted on
+#' the clean training portion and noise is defined in the transformed units.
+#' Contamination functions are always seeded explicitly: fold
 #' \code{i} uses \code{corrupt_func_X_seeds[i]} and
 #' \code{corrupt_func_y_seeds[i]} locally via
 #' \code{withr::with_seed()}, so the noise does not depend on
@@ -226,13 +226,6 @@ K_fold_cross_validation <- function(
       X_train <- X[-idx, , drop = FALSE]
       y_train <- y[-idx, , drop = FALSE]
 
-      if (!is.null(corrupt_func_X)) {
-        X_train <- withr::with_seed(corrupt_func_X_seeds[i], corrupt_func_X(X_train))
-      }
-      if (!is.null(corrupt_func_y)) {
-        y_train <- withr::with_seed(corrupt_func_y_seeds[i], corrupt_func_y(y_train))
-      }
-
       if (!is.null(pipeline_X)) {
         for (pipi in seq_along(pipeline_X)) {
           pip_temp <- pipeline_X[[pipi]](X_train)
@@ -247,6 +240,13 @@ K_fold_cross_validation <- function(
           y_train  <- trans(pip_temp, y_train)
           y_test   <- trans(pip_temp, y_test)
         }
+      }
+
+      if (!is.null(corrupt_func_X)) {
+        X_train <- withr::with_seed(corrupt_func_X_seeds[i], corrupt_func_X(X_train))
+      }
+      if (!is.null(corrupt_func_y)) {
+        y_train <- withr::with_seed(corrupt_func_y_seeds[i], corrupt_func_y(y_train))
       }
 
       model_res <- do.call(
