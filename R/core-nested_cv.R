@@ -43,7 +43,7 @@
 #'   then seeded with \code{model_seeds[i] + k}. With \code{NULL} the global
 #'   RNG is consumed.
 #' @param corrupt_func_X,corrupt_func_y Optional contamination functions,
-#'   applied to the training portion of a fold before any preprocessing; see
+#'   applied to the training portion of a fold after any preprocessing; see
 #'   \code{K_fold_cross_validation()}. During the search, inner fold \code{k}
 #'   of outer fold \code{i} uses \code{corrupt_func_X_seeds_list[[i]][k]};
 #'   the final refit of outer fold \code{i} uses
